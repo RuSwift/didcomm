@@ -20,6 +20,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -40,4 +42,37 @@ jobs:
       if: always()
       run: |
         echo "Tests completed on ${{ matrix.os }} with Python ${{ matrix.python-version }}"
+
+  tag-on-success:
+    needs: test
+    runs-on: ubuntu-latest
+    # Создаем тег только для определенных веток и только при push (не для PR)
+    if: |
+      github.event_name == 'push' && 
+      (github.ref == 'refs/heads/main' || 
+       github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create tag
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Создаем тег с датой и коротким SHA
+        TAG_NAME="test-passed-$(date +'%Y%m%d-%H%M%S')-$(git rev-parse --short HEAD)"
+        
+        # Проверяем, существует ли тег
+        if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+          echo "Tag $TAG_NAME already exists, skipping"
+        else
+          git tag -a "$TAG_NAME" -m "All tests passed on ${{ github.ref_name }} - ${{ github.sha }}"
+          git push origin "$TAG_NAME"
+          echo "Created and pushed tag: $TAG_NAME"
+        fi
 
