@@ -65,7 +65,7 @@ jobs:
         git config user.email "github-actions[bot]@users.noreply.github.com"
         
         # Создаем тег с датой и коротким SHA
-        TAG_NAME="test-passed-$(date +'%Y%m%d-%H%M%S')-$(git rev-parse --short HEAD)"
+        TAG_NAME="ver-$(date +'%Y%m%d')-$(git rev-parse --short HEAD)"
         
         # Проверяем, существует ли тег
         if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
