@@ -343,6 +343,18 @@ class KeyPair:
         with open(filepath, 'wb') as f:
             f.write(pem_data)
     
+    def to_public_pem(self) -> bytes:
+        """
+        Экспортирует публичный ключ в PEM формат
+        
+        Returns:
+            PEM данные публичного ключа в виде bytes
+        """
+        return self._public_key_obj.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+    
     def to_dict(self) -> dict:
         """Возвращает словарь с ключами"""
         result = {
@@ -365,7 +377,7 @@ class EthKeyPair(KeyPair):
     Добавляет Ethereum-специфичные методы и функциональность
     """
     
-    def __init__(self, private_key: Optional[bytes] = None):
+    def __init__(self, private_key: Optional[bytes] = None, **ignore):
         """
         Инициализация Ethereum пары ключей
         
