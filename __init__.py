@@ -4,7 +4,7 @@ DIDComm пакет для работы с децентрализованной �
 """
 
 from didcomm.crypto import EthCrypto, KeyPair as BaseKeyPair, EthKeyPair
-from didcomm.did import DID, create_peer_did, resolve_did
+from didcomm.did import DID, create_peer_did, create_peer_did_from_keypair, resolve_did
 from didcomm.message import DIDCommMessage, pack_message, unpack_message
 from didcomm.resolver import DIDResolver
 
@@ -19,6 +19,7 @@ __all__ = [
     "EthKeyPair",
     "DID",
     "create_peer_did",
+    "create_peer_did_from_keypair",
     "resolve_did",
     "DIDCommMessage",
     "pack_message",
