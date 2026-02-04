@@ -475,6 +475,9 @@ class EthKeyPair(KeyPair):
         if not mnemo.check(mnemonic_phrase):
             raise ValueError("Невалидная мнемоническая фраза")
         
+        # Включаем неаудированные функции HD wallet в eth_account
+        Account.enable_unaudited_hdwallet_features()
+        
         # Используем eth_account для деривации ключа по BIP44
         try:
             account = Account.from_mnemonic(
@@ -609,6 +612,9 @@ class EthCrypto:
         Returns:
             Список словарей с информацией об аккаунтах
         """
+        # Включаем неаудированные функции HD wallet в eth_account
+        Account.enable_unaudited_hdwallet_features()
+        
         accounts = []
         
         for i in range(count):
