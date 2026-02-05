@@ -686,14 +686,34 @@ class EthCrypto:
             
             # Получаем адрес из публичного ключа
             if len(public_key) == 64:
-                pub_key_obj = keys.PublicKey.from_bytes(public_key)
+                try:
+                    pub_key_obj = keys.PublicKey.from_bytes(public_key)
+                except AttributeError:
+                    # В новых версиях eth-keys нужен другой конструктор
+                    pub_key_obj = keys.PublicKey(public_key)
             elif len(public_key) == 33:
-                pub_key_obj = keys.PublicKey.from_compressed_bytes(public_key)
+                try:
+                    pub_key_obj = keys.PublicKey.from_compressed_bytes(public_key)
+                except AttributeError:
+                    # Декомпрессируем вручную
+                    from cryptography.hazmat.primitives.asymmetric import ec
+                    from cryptography.hazmat.primitives import serialization
+                    ec_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(
+                        ec.SECP256K1(), public_key
+                    )
+                    uncompressed = ec_pub_key.public_bytes(
+                        encoding=serialization.Encoding.X962,
+                        format=serialization.PublicFormat.UncompressedPoint
+                    )
+                    pub_key_obj = keys.PublicKey(uncompressed[1:])
             else:
                 return False
             
             # Вычисляем адрес из публичного ключа
-            expected_address = pub_key_obj.to_address()
+            try:
+                expected_address = pub_key_obj.to_address()
+            except AttributeError:
+                expected_address = pub_key_obj.to_checksum_address()
             
             # Сравниваем адреса (без учета регистра)
             return recovered_address.lower() == expected_address.lower()

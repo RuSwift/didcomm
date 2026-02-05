@@ -23,7 +23,10 @@ class DIDCommMessage:
         id: Optional[str] = None,
         type: Optional[str] = None,
         created_time: Optional[str] = None,
-        expires_time: Optional[str] = None
+        expires_time: Optional[str] = None,
+        thid: Optional[str] = None,
+        pthid: Optional[str] = None,
+        **kwargs
     ):
         """
         Инициализация DIDComm сообщения
@@ -36,6 +39,9 @@ class DIDCommMessage:
             type: Тип сообщения
             created_time: Время создания (ISO 8601)
             expires_time: Время истечения (ISO 8601)
+            thid: Thread ID (для связи сообщений)
+            pthid: Parent Thread ID (для вложенных потоков)
+            **kwargs: Дополнительные поля
         """
         self.id = id or str(uuid.uuid4())
         self.type = type or "https://didcomm.org/basicmessage/1.0/message"
@@ -44,6 +50,10 @@ class DIDCommMessage:
         self.to = to or []
         self.created_time = created_time or datetime.utcnow().isoformat() + "Z"
         self.expires_time = expires_time
+        self.thid = thid
+        self.pthid = pthid
+        # Store any additional fields
+        self.extra_fields = kwargs
     
     def to_dict(self) -> Dict[str, Any]:
         """Преобразует сообщение в словарь"""
@@ -65,6 +75,16 @@ class DIDCommMessage:
         if self.expires_time:
             message["expires_time"] = self.expires_time
         
+        if self.thid:
+            message["thid"] = self.thid
+        
+        if self.pthid:
+            message["pthid"] = self.pthid
+        
+        # Include any extra fields
+        if hasattr(self, 'extra_fields'):
+            message.update(self.extra_fields)
+        
         return message
     
     def to_json(self) -> str:
@@ -74,6 +94,15 @@ class DIDCommMessage:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DIDCommMessage":
         """Создает сообщение из словаря"""
+        # Extract known fields
+        known_fields = {
+            'body', 'from', 'to', 'id', 'type', 
+            'created_time', 'expires_time', 'thid', 'pthid'
+        }
+        
+        # Separate extra fields
+        extra_fields = {k: v for k, v in data.items() if k not in known_fields}
+        
         return cls(
             body=data.get("body", {}),
             from_did=data.get("from"),
@@ -81,7 +110,10 @@ class DIDCommMessage:
             id=data.get("id"),
             type=data.get("type"),
             created_time=data.get("created_time"),
-            expires_time=data.get("expires_time")
+            expires_time=data.get("expires_time"),
+            thid=data.get("thid"),
+            pthid=data.get("pthid"),
+            **extra_fields
         )
     
     @classmethod
@@ -367,16 +399,7 @@ def _get_crypto_for_verification(
     Returns:
         Кортеж (криптографический класс, кривая для EC или None)
     """
-    # Если тип ключа явно указан
-    if sender_key_type:
-        if sender_key_type.upper() == "RSA":
-            return RsaCrypto, None
-        elif sender_key_type.upper() == "EC":
-            return EcCrypto, ec.SECP256K1()  # По умолчанию secp256k1
-        elif sender_key_type.upper() == "ETH":
-            return EthCrypto, None
-    
-    # Пытаемся определить из заголовка
+    # Пытаемся определить из заголовка СНАЧАЛА (приоритет)
     if protected_header_b64:
         try:
             missing_padding = len(protected_header_b64) % 4
@@ -397,6 +420,15 @@ def _get_crypto_for_verification(
                     return EcCrypto, ec.SECP256R1()
         except Exception:
             pass
+    
+    # Если тип ключа явно указан и заголовок не помог
+    if sender_key_type:
+        if sender_key_type.upper() == "RSA":
+            return RsaCrypto, None
+        elif sender_key_type.upper() == "EC":
+            return EcCrypto, ec.SECP256K1()  # По умолчанию secp256k1
+        elif sender_key_type.upper() == "ETH":
+            return EthCrypto, None
     
     # Пытаемся определить по размеру ключа
     # RSA публичные ключи обычно больше 200 байт
